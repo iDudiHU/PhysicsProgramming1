@@ -14,10 +14,12 @@ public class PhysicsPlayer : MonoBehaviour
     private bool _collidedOnSide, _collidedOnTop = false;
     // Store the launch position
     private Vector3 _launchPosition;
+    private int _movesTotal;
 
     // For displaying power and angle
     [SerializeField] private TextMeshProUGUI _powerText;
     [SerializeField] private TextMeshProUGUI _angleText;
+    [SerializeField] private TextMeshProUGUI _movesTotalText;    
 
     // For collision detection
     private RaycastHit2D _raycastHit;
@@ -39,10 +41,11 @@ public class PhysicsPlayer : MonoBehaviour
         // If we're already in the air, adjust the launchVector based on the current position and velocity
         if (_isLaunched)
         {
-            Vector2 currentPosition = transform.position;
-            Vector2 currentVelocity = (_LaunchVectorDirection.y - _gravityStrength * _elapsedTime) * Vector2.up
-                + _LaunchVectorDirection.x * Vector2.right;
-            _LaunchVectorDirection = forceVector + currentVelocity;
+            //Vector2 currentPosition = transform.position;
+            //Vector2 currentVelocity = (_LaunchVectorDirection.y - _gravityStrength * _elapsedTime) * Vector2.up
+            //    + _LaunchVectorDirection.x * Vector2.right;
+            //_LaunchVectorDirection = forceVector + currentVelocity;
+            _LaunchVectorDirection = forceVector;
             _elapsedTime = 0f;
         }
         else
@@ -59,6 +62,7 @@ public class PhysicsPlayer : MonoBehaviour
         // Update the power and angle display
         _powerText.text = $"Power: {_LaunchVectorDirection.magnitude:F2}";
         _angleText.text = $"Angle: {Vector2.SignedAngle(Vector2.right, _LaunchVectorDirection):F2}°";
+        _movesTotalText.text = $"Moves: {++_movesTotal}";
     }
 
 
