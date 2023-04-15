@@ -41,8 +41,13 @@ public class DragAndShoot : MonoBehaviour
 			_mouseReleasePosition = Input.mousePosition;
 			Vector3 mouseWorld = Camera.main.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, Camera.main.nearClipPlane));
 			_lineRenderer.enabled = false;
-			_launchDirection = mouseWorld - mouseWorldStart;
-			Shoot(-_launchDirection);
+
+			// Calculate the normalized difference between mouse press and release positions
+			Vector2 mouseDiffNormalized = (_mouseReleasePosition - _mousePressDownPosition).normalized;
+			// Calculate the launch direction by multiplying the normalized difference by the length of the arrow
+			_launchDirection = -mouseDiffNormalized * _launchDirection.magnitude;
+
+			Shoot(_launchDirection);
 		}
 	}
 

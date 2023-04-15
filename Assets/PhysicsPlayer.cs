@@ -118,7 +118,10 @@ public class PhysicsPlayer : MonoBehaviour
 
 	private IEnumerator SlowDown()
     {
-        yield return new WaitForSecondsRealtime(0.1f);
-        //Time.timeScale = 0.3f;
+        Time.timeScale = 1.0f;
+        Time.fixedDeltaTime = 0.02f * Time.timeScale; // Adjust fixedDeltaTime based on the current timeScale
+        yield return new WaitForSecondsRealtime(1.5f);
+        Time.timeScale = 0.3f;
+        Time.fixedDeltaTime = 0.02f * Time.timeScale; // Adjust fixedDeltaTime based on the current timeScale
     }
 }
