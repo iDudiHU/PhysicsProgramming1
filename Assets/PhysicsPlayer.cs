@@ -7,9 +7,13 @@ public class PhysicsPlayer : MonoBehaviour
 {
     DragAndShoot DNS;
     [SerializeField] private float _gravityStrength = 10f;
-    Vector2 _launchVector = Vector2.zero;
+    Vector2 _LaunchVectorDirection = Vector2.zero;
     private float _elapsedTime;
     private bool _isLaunched = false;
+    private bool _IsGrounded = false;
+    private bool _collidedOnSide, _collidedOnTop = false;
+    // Store the launch position
+    private Vector3 _launchPosition;
 
     // For displaying power and angle
     [SerializeField] private TextMeshProUGUI _powerText;
@@ -32,77 +36,87 @@ public class PhysicsPlayer : MonoBehaviour
 
     void MouseReleased(Vector2 forceVector)
     {
-        _launchVector = forceVector;
-        _elapsedTime = 0f;
+        // If we're already in the air, adjust the launchVector based on the current position and velocity
+        if (_isLaunched)
+        {
+            Vector2 currentPosition = transform.position;
+            Vector2 currentVelocity = (_LaunchVectorDirection.y - _gravityStrength * _elapsedTime) * Vector2.up
+                + _LaunchVectorDirection.x * Vector2.right;
+            _LaunchVectorDirection = forceVector + currentVelocity;
+            _elapsedTime = 0f;
+        }
+        else
+        {
+            _LaunchVectorDirection = forceVector;
+            _elapsedTime = 0f;
+        }
+        _launchPosition = transform.position;
         _isLaunched = true;
+        _collidedOnSide = false;
+        _collidedOnTop = false;
         StartCoroutine(SlowDown());
 
         // Update the power and angle display
-        _powerText.text = $"Power: {forceVector.magnitude:F2}";
-        _angleText.text = $"Angle: {Vector2.SignedAngle(Vector2.right, forceVector):F2}°";
+        _powerText.text = $"Power: {_LaunchVectorDirection.magnitude:F2}";
+        _angleText.text = $"Angle: {Vector2.SignedAngle(Vector2.right, _LaunchVectorDirection):F2}°";
     }
 
-    // Update is called once per frame
-    void Update()
-    {
+
+    private void FixedUpdate()
+	{
         if (_isLaunched)
         {
             // Update the elapsed time
-            _elapsedTime += Time.deltaTime;
+            _elapsedTime += Time.fixedDeltaTime;
 
             // Calculate the new position based on the kinematic equations
-            Vector3 newPos = new Vector3(
-                _launchVector.x * _elapsedTime,
-                _launchVector.y * _elapsedTime - 0.5f * _gravityStrength * Mathf.Pow(_elapsedTime, 2),
+            Vector3 positionDiff = new Vector3(
+                _LaunchVectorDirection.x * _elapsedTime,
+                _LaunchVectorDirection.y * _elapsedTime - 0.5f * _gravityStrength * Mathf.Pow(_elapsedTime, 2),
                 0f
             );
+            // Calculate the new position by adding the position difference to the launch position
+            Vector3 newPos = _launchPosition + positionDiff;
 
-            // Perform a raycast to check for Tilemap collisions
-            _raycastHit = Physics2D.Raycast(transform.position, (newPos - transform.position).normalized, _collisionCheckDistance, _tilemapLayerMask);
-
-            if (_raycastHit.collider != null)
-            {
-                // If there's a collision, handle it based on the direction
-                float angle = Vector2.Angle(_raycastHit.normal, Vector2.up);
-                if (angle <= 45)
-                {
-                    // Top collision, zero y velocity
-                    _launchVector.y = 0;
-                    _elapsedTime = 0f;
-                }
-                else
-                {
-                    // Side collision, zero x velocity
-                    _launchVector.x = 0;
-                    _elapsedTime = 0f;
-                }
-                // Set newPos to the current position to avoid the bounce
-                newPos = transform.position;
+            // Perform a raycast right and left to stop calculating x position
+            RaycastHit2D hitRight = Physics2D.Raycast(transform.position, Vector2.right, 0.1f + 0.25f, _tilemapLayerMask);
+            RaycastHit2D hitLeft = Physics2D.Raycast(transform.position, Vector2.left, 0.1f + 0.25f, _tilemapLayerMask);
+            RaycastHit2D hitUp = Physics2D.Raycast(transform.position, Vector2.up, 0.1f + 0.25f, _tilemapLayerMask);
+            if (hitRight.collider != null && _LaunchVectorDirection.x > 0)
+			{
+                _collidedOnSide = true;
             }
+            if (hitLeft.collider != null && _LaunchVectorDirection.x < 0)
+            {
+                _collidedOnSide = true;
+            }
+            if (hitUp.collider != null && _LaunchVectorDirection.y > 0)
+            {
+                _collidedOnTop = true;
+            }
+
+            if (_collidedOnSide)
+                newPos.x = transform.position.x;
+            if (_collidedOnTop)
+                newPos.y = Mathf.Min(newPos.y, transform.position.y);
 
             // Check if the player is grounded
-            bool isGrounded = Physics2D.Raycast(transform.position, Vector2.down, _groundedCheckDistance, _tilemapLayerMask);
+            _IsGrounded = Physics2D.Raycast(transform.position, Vector2.down, 0.1f + 0.25f, _tilemapLayerMask);
 
-            // Apply gravity if the player is not grounded
-            if (!isGrounded)
-            {
-                newPos = new Vector3(
-                    _launchVector.x * _elapsedTime,
-                    _launchVector.y * _elapsedTime - 0.5f * _gravityStrength * Mathf.Pow(_elapsedTime, 2),
-                    0f
-                );
-            }
-            else
+            // If we are on the ground don't fall through
+            if (_IsGrounded && (_LaunchVectorDirection.y - _gravityStrength * _elapsedTime) < 0)
             {
                 _isLaunched = false;
+                return;
             }
 
             // Smoothly interpolate between the current position and the new position
-            transform.position = Vector3.Lerp(transform.position, newPos, Time.deltaTime * 10f);
+            transform.position = newPos;
+            //transform.position = Vector3.Lerp(transform.position, newPos, Time.fixedDeltaTime * 10f);
         }
     }
 
-    private IEnumerator SlowDown()
+	private IEnumerator SlowDown()
     {
         yield return new WaitForSecondsRealtime(0.1f);
         //Time.timeScale = 0.3f;
