@@ -10,13 +10,15 @@ public class DragAndShoot : MonoBehaviour
 	private Vector3 _launchDirection;
 	public float arrowheadSize = 0.2f;
 	public float maxLength = 2f;
+	[SerializeField] private int _MovesCount = 0;
+	public int MovesCount => _MovesCount;
 	Gradient gradient;
 	[SerializeField]
 	private float _forceMultiplier = 3;
 
 	private Rigidbody rb;
 
-	public event Action<Vector2> OnShoot;
+	public event Action<Vector3> OnShoot;
 
 	void Start()
 	{
@@ -77,11 +79,16 @@ public class DragAndShoot : MonoBehaviour
 		_lineRenderer.colorGradient = gradient;
 	}
 
-	void Shoot(Vector3 forceVector)
+	public void Shoot(Vector3 forceVector)
 	{
-		Vector2 force = new Vector2(forceVector.x, forceVector.y) * _forceMultiplier;
-		Debug.Log(force);
+		Vector3 force = new Vector3(forceVector.x, forceVector.y, .0f) * _forceMultiplier;
 		OnShoot?.Invoke(force);
+		_MovesCount++;
+	}
+
+	public void ReplayShoot(Vector3 forceVector)
+	{
+		OnShoot?.Invoke(forceVector);
 	}
 
 }

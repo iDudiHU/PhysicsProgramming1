@@ -15,7 +15,7 @@ public class LazyCamera : MonoBehaviour
     }
 
 
-    void LateUpdate()
+    void FixedUpdate()
     {
         // If there is a target, move the camera towards it
         if (target != null)
