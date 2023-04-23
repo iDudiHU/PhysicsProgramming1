@@ -38268,7 +38268,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 85de1dfb0d06dd040a4d48a18458d150, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _gravityStrength: 9.8
+  _gravityStrength: -9.8
   magicNumber: 1
   IsReplay: 0
   _windDirection: {x: 0, y: 0, z: 0}

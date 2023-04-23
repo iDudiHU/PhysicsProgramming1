@@ -20,7 +20,7 @@ public class PhysicsPlayer : MonoBehaviour
         t = duration time
      */
     DragAndShoot DNS;
-    [SerializeField] private float _gravityStrength = 9.8f;
+    [SerializeField] private float _gravityStrength = -9.8f;
     Vector3 _LaunchVectorDirection = Vector3.zero;
     public float magicNumber;
     private float _elapsedTime;
@@ -77,7 +77,7 @@ public class PhysicsPlayer : MonoBehaviour
 	{
         if (_isLaunched)
         {
-            Vector3 gravityVelocityChange = new Vector3(0f, -_gravityStrength * Time.fixedDeltaTime, 0f);
+            Vector3 gravityVelocityChange = new Vector3(0f, _gravityStrength * Time.fixedDeltaTime, 0f);
             // Calculate the velocity change due to wind
             Vector3 windVelocityChange = _windDirection * Time.fixedDeltaTime;
 
@@ -124,13 +124,13 @@ public class PhysicsPlayer : MonoBehaviour
 
         if (_collidedOnSide)
 		{
-            _currentVelocity.x = -_currentVelocity.x;
+            _currentVelocity.x = -_currentVelocity.x * .7f;
             _collidedOnSide = false;
 		}
         if (_collidedOnTop)
 		{
             // Set the upward component of the current velocity to zero
-            _currentVelocity.y = -_currentVelocity.y;
+            _currentVelocity.y = -_currentVelocity.y * .7f;
             _collidedOnTop = false;
 		}
 
