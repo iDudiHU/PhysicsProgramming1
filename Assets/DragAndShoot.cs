@@ -48,7 +48,7 @@ public class DragAndShoot : MonoBehaviour
 			else if (Input.GetMouseButtonUp(0))
 			{ // Check if left mouse button is released
 				_lineRenderer.enabled = false;
-				Shoot(-_launchDirection);
+				Shoot(-_launchDirection*1.6f);
 				Debug.Log(_launchDirection);
 				Time.timeScale = 1f;
 				Time.fixedDeltaTime = 0.02f;
@@ -63,7 +63,7 @@ public class DragAndShoot : MonoBehaviour
 		_launchDirection = mouseWorld - startPosition;
 		_launchDirection = Vector3.ClampMagnitude(_launchDirection, maxLength);
 
-		Vector3 endPoint = startPosition + -_launchDirection;
+		Vector3 endPoint = startPosition + -_launchDirection*1.6f;
 
 		float percentSize = arrowheadSize / _launchDirection.magnitude;
 		_lineRenderer.SetPosition(0, startPosition);
@@ -78,10 +78,7 @@ public class DragAndShoot : MonoBehaviour
 			new Keyframe(1, 0f));
 
 		// Calculate the ratio of the launch vector magnitude to the max length
-		float ratio = Vector3.Magnitude(new Vector3(_launchDirection.x, _launchDirection.y, 0f)) / maxLength;
-		Debug.Log("Ratio: " + ratio);
-		Debug.Log("Vector Magnitude: " + Vector3.Magnitude(_launchDirection));
-		Debug.Log("Max Length: " + maxLength);
+		float ratio = Vector3.Magnitude(new Vector3(_launchDirection.x, _launchDirection.y, 0f)*1.6f) / maxLength;
 
 		// Create a custom gradient
 		Gradient customGradient = new Gradient();
