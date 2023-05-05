@@ -22,15 +22,21 @@ public class PhysicsPlayer : MonoBehaviour
     DragAndShoot DNS;
     [SerializeField] private float _gravityStrength = -9.8f;
     Vector3 _LaunchVectorDirection = Vector3.zero;
+    private float playerHalfWidth;
     public float magicNumber;
     private float _elapsedTime;
     private bool _isLaunched = false;
     private bool _IsGrounded = false;
     private bool _collidedOnSide, _collidedOnTop = false;
     public bool IsReplay = false;
+    public AudioSource Audio;
+    public ParticleSystem Particle;
+    private int _InAirJumpsMax = 1;
+    private int _InAirJumpsRemaining = 1;
+    public TextMeshProUGUI jumps;
     // Store the launch position
     [SerializeField]
-    private Vector3 _windDirection;
+    Wind wind;
     private Vector3 _currentVelocity;   
 
     // For collision detection
@@ -44,30 +50,27 @@ public class PhysicsPlayer : MonoBehaviour
     {
         DNS = GetComponent<DragAndShoot>();
         DNS.OnShoot += MouseReleased;
-        _windDirection = new Vector3(Random.Range(-5,5), .0f, .0f);
+        wind = FindObjectOfType<Wind>();
+        Audio = GetComponent<AudioSource>();
+        playerHalfWidth = GetComponent<Collider2D>().bounds.size.x / 2;
+        Particle = GetComponent<ParticleSystem>();
     }
 
     void MouseReleased(Vector3 forceVector)
     {
         // If we're already in the air, adjust the launchVector based on the current position and velocity
-        if (_isLaunched)
+        if (_InAirJumpsRemaining > 0)
         {
-            //Vector2 currentPosition = transform.position;
-            //Vector2 currentVelocity = (_LaunchVectorDirection.y - _gravityStrength * _elapsedTime) * Vector2.up
-            //    + _LaunchVectorDirection.x * Vector2.right;
-            //_LaunchVectorDirection = forceVector + currentVelocity;
-            _LaunchVectorDirection = forceVector;
-            _elapsedTime = 0f;
+            Audio.Stop();
+            Audio.Play();
+            Particle.Play();
+            _currentVelocity = forceVector * magicNumber;
+            _isLaunched = true;
+            _collidedOnSide = false;
+            _collidedOnTop = false;
+            _InAirJumpsRemaining--;
+            jumps.text = $"In air jumps: {_InAirJumpsRemaining}";
         }
-        else
-        {
-            _LaunchVectorDirection = forceVector;
-            _elapsedTime = 0f;
-        }
-        _currentVelocity = _LaunchVectorDirection;
-        _isLaunched = true;
-        _collidedOnSide = false;
-        _collidedOnTop = false;
         if (!IsReplay)
 		{
             //StartCoroutine(SlowDown());
@@ -79,7 +82,7 @@ public class PhysicsPlayer : MonoBehaviour
         {
             Vector3 gravityVelocityChange = new Vector3(0f, _gravityStrength * Time.fixedDeltaTime, 0f);
             // Calculate the velocity change due to wind
-            Vector3 windVelocityChange = _windDirection * Time.fixedDeltaTime;
+            Vector3 windVelocityChange = wind.WindDirection * Time.fixedDeltaTime;
 
             // Update the current velocity with gravity and wind effects
             _currentVelocity += gravityVelocityChange + windVelocityChange;
@@ -104,17 +107,19 @@ public class PhysicsPlayer : MonoBehaviour
     }
 
     void HandleCollisionDetection(ref Vector3 newPos)
-	{
+    {
         // Perform a raycast right and left to stop calculating x position
         RaycastHit2D hitRight = Physics2D.Raycast(transform.position, Vector2.right, 0.1f + 0.25f, _tilemapLayerMask);
         RaycastHit2D hitLeft = Physics2D.Raycast(transform.position, Vector2.left, 0.1f + 0.25f, _tilemapLayerMask);
         RaycastHit2D hitUp = Physics2D.Raycast(transform.position, Vector2.up, 0.1f + 0.25f, _tilemapLayerMask);
         if (hitRight.collider != null && _currentVelocity.x > 0)
         {
+            newPos = transform.position;
             _collidedOnSide = true;
         }
         if (hitLeft.collider != null && _currentVelocity.x < 0)
         {
+            newPos = transform.position;
             _collidedOnSide = true;
         }
         if (hitUp.collider != null && _currentVelocity.y > 0)
@@ -123,24 +128,40 @@ public class PhysicsPlayer : MonoBehaviour
         }
 
         if (_collidedOnSide)
-		{
+        {
+            float playerHalfWidth = GetComponent<Collider2D>().bounds.size.x / 2;
+            transform.position = newPos;
             _currentVelocity.x = -_currentVelocity.x * .7f;
             _collidedOnSide = false;
-		}
+        }
         if (_collidedOnTop)
-		{
+        {
             // Set the upward component of the current velocity to zero
             _currentVelocity.y = -_currentVelocity.y * .7f;
             _collidedOnTop = false;
-		}
+        }
 
         // Check to see if we are falling that we land on top of a floor tile
-        _IsGrounded = Physics2D.Raycast(transform.position, Vector2.down, 0.1f + 0.25f, _tilemapLayerMask);
+        RaycastHit2D hitDown = Physics2D.Raycast(transform.position, Vector2.down, 0.1f + 0.25f, _tilemapLayerMask);
         if (_currentVelocity.y < 0)
         {
-            if (_IsGrounded)
+            if (hitDown.collider != null)
             {
                 _isLaunched = false;
+
+                // Calculate the distance between the player and the hit point
+                float playerHalfHeight = GetComponent<Collider2D>().bounds.size.y / 2;
+
+                // Set the new position of the player directly above the ground
+                newPos = new Vector3(transform.position.x, hitDown.point.y + playerHalfHeight, transform.position.z);
+                transform.position = newPos;
+
+                // Set the downward component of the current velocity to zero
+                _currentVelocity.y = 0;
+
+                //Reset Jumps
+                _InAirJumpsRemaining = _InAirJumpsMax;
+                jumps.text = $"In air jumps: {_InAirJumpsRemaining}";
             }
         }
     }
@@ -163,4 +184,14 @@ public class PhysicsPlayer : MonoBehaviour
 	{
 		_currentVelocity += vectorToAdd;
 	}
+
+    public void AddInAirJumps()
+	{
+        _InAirJumpsMax++;
+        ResetAirJumps();
+    }
+    public void ResetAirJumps()
+    {
+        _InAirJumpsRemaining = _InAirJumpsMax;
+    }
 }

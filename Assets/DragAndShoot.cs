@@ -19,6 +19,7 @@ public class DragAndShoot : MonoBehaviour
 	private Rigidbody rb;
 
 	public event Action<Vector3> OnShoot;
+	public bool isResplay;
 
 	void Start()
 	{
@@ -28,28 +29,30 @@ public class DragAndShoot : MonoBehaviour
 
 	private void Update()
 	{
-		if (Input.GetMouseButtonDown(0))
-		{ // Check if left mouse button is clicked
-			_mousePressDownPosition = Input.mousePosition;
-			mouseWorldStart = Camera.main.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, Camera.main.nearClipPlane));
-		}
-		else if (Input.GetMouseButton(0))
+		if (!isResplay)
 		{
-			_lineRenderer.enabled = true;
-			DrawArrow();
-		}
-		else if (Input.GetMouseButtonUp(0))
-		{ // Check if left mouse button is released
-			_mouseReleasePosition = Input.mousePosition;
-			Vector3 mouseWorld = Camera.main.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, Camera.main.nearClipPlane));
-			_lineRenderer.enabled = false;
-
-			// Calculate the normalized difference between mouse press and release positions
-			Vector2 mouseDiffNormalized = (_mouseReleasePosition - _mousePressDownPosition).normalized;
-			// Calculate the launch direction by multiplying the normalized difference by the length of the arrow
-			_launchDirection = -mouseDiffNormalized * _launchDirection.magnitude;
-
-			Shoot(_launchDirection);
+			if (Input.GetMouseButtonDown(0))
+			{ // Check if left mouse button is clicked
+				_mousePressDownPosition = Input.mousePosition;
+				mouseWorldStart = Camera.main.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, Camera.main.nearClipPlane));
+				
+				Time.timeScale = 0.1f;
+				// Increase FixedUpdate frequency
+				Time.fixedDeltaTime = 0.02f * Time.timeScale;
+			}
+			else if (Input.GetMouseButton(0))
+			{
+				_lineRenderer.enabled = true;
+				DrawArrow();
+			}
+			else if (Input.GetMouseButtonUp(0))
+			{ // Check if left mouse button is released
+				_lineRenderer.enabled = false;
+				Shoot(-_launchDirection);
+				Debug.Log(_launchDirection);
+				Time.timeScale = 1f;
+				Time.fixedDeltaTime = 0.02f;
+			} 
 		}
 	}
 
@@ -57,7 +60,7 @@ public class DragAndShoot : MonoBehaviour
 	{
 		startPosition = transform.position;
 		Vector3 mouseWorld = Camera.main.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, Camera.main.nearClipPlane));
-		_launchDirection = mouseWorld - mouseWorldStart;
+		_launchDirection = mouseWorld - startPosition;
 		_launchDirection = Vector3.ClampMagnitude(_launchDirection, maxLength);
 
 		Vector3 endPoint = startPosition + -_launchDirection;
@@ -73,11 +76,26 @@ public class DragAndShoot : MonoBehaviour
 			new Keyframe(1 - percentSize, 1f),
 			new Keyframe(1 - percentSize, 1f),
 			new Keyframe(1, 0f));
-		GradientColorKey[] colorKeys = gradient.colorKeys;
-		colorKeys[1].time = Mathf.Clamp01(1 - _launchDirection.magnitude / maxLength);
-		gradient.SetKeys(colorKeys, gradient.alphaKeys);
-		_lineRenderer.colorGradient = gradient;
+
+		// Calculate the ratio of the launch vector magnitude to the max length
+		float ratio = Vector3.Magnitude(new Vector3(_launchDirection.x, _launchDirection.y, 0f)) / maxLength;
+		Debug.Log("Ratio: " + ratio);
+		Debug.Log("Vector Magnitude: " + Vector3.Magnitude(_launchDirection));
+		Debug.Log("Max Length: " + maxLength);
+
+		// Create a custom gradient
+		Gradient customGradient = new Gradient();
+		customGradient.SetKeys(
+			new GradientColorKey[] { new GradientColorKey(Color.red, 0), new GradientColorKey(Color.yellow, 0.5f), new GradientColorKey(Color.green, 1) },
+			new GradientAlphaKey[] { new GradientAlphaKey(1, 0), new GradientAlphaKey(1, 1) }
+		);
+
+		// Sample the gradient based on the ratio and set the color of the line renderer
+		Color sampledColor = customGradient.Evaluate(ratio);
+		_lineRenderer.startColor = sampledColor;
+		_lineRenderer.endColor = sampledColor;
 	}
+
 
 	public void Shoot(Vector3 forceVector)
 	{
@@ -86,9 +104,20 @@ public class DragAndShoot : MonoBehaviour
 		_MovesCount++;
 	}
 
+	public void HazzardShoot(Vector3 forceVector)
+	{
+		Vector3 force = new Vector3(forceVector.x, forceVector.y, .0f) * _forceMultiplier;
+		GetComponent<PhysicsPlayer>().ResetAirJumps();
+		OnShoot?.Invoke(forceVector);
+	}
+
 	public void ReplayShoot(Vector3 forceVector)
 	{
+		Vector3 force = new Vector3(forceVector.x, forceVector.y, .0f) * _forceMultiplier;
 		OnShoot?.Invoke(forceVector);
+		Wind wind = FindObjectOfType<Wind>();
+		Debug.Log($"Shoot Vector: {forceVector}");
+		Debug.Log($"Wind Durection: {wind.WindDirection.x}");
 	}
 
 }
